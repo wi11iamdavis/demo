@@ -1,1 +1,42 @@
-
+workflows:
+    flutter-yaml-ios:
+        name: Flutter yaml iOS
+        instance_type: mac_mini_m1
+        working_directory: flutter/flutter-android-and-ios-yaml-demo-project
+        max_build_duration: 100
+        environment:
+            groups:
+                - ios_creds # <-- (group contains variables: APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY_IDENTIFIER, APP_STORE_CONNECT_PRIVATE_KEY, CERTIFICATE_PRIVATE_KEY)
+            vars:
+                XCODE_WORKSPACE: "Runner.xcworkspace"
+                XCODE_SCHEME: "Runner"
+                BUNDLE_ID: "io.codemagic.cmflutteryaml"
+                APP_STORE_APP_ID: 1571561263
+            flutter: 3.10.3
+            xcode: 13.3.1
+            cocoapods: default
+        scripts:
+            - name: Get Flutter packages
+              script: |
+                  flutter packages pub get
+            - name: Flutter analyze
+              script: |
+                  flutter analyze
+            - name: Flutter build ipa and automatic versioning
+              script: |
+                  flutter build ipa --release \
+                  --build-name=1.0.0 \
+                  --build-number=$(($(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID") + 1)) \
+                  --export-options-plist=/Users/builder/export_options.plist
+        artifacts:
+            - build/ios/ipa/*.ipa
+            - /tmp/xcodebuild_logs/*.log
+            - flutter_drive.log
+        publishing:
+            # See the following link for details about email publishing - https://docs.codemagic.io/publishing-yaml/distribution/#email
+            email:
+                recipients:
+                    - it.biruk.tesfaye2913@gmail.com
+                notify:
+                    success: true # To receive a notification when a build succeeds
+                    failure: false # To not receive a notification when a build fails
